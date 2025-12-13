@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple IPTV Player</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        #player { width: 800px; max-width: 100%; margin: 20px 0; }
+        .channel-btn { 
+            padding: 10px 15px; 
+            margin: 5px; 
+            background: #3498db; 
+            color: white; 
+            border: none; 
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .channel-btn:hover { background: #2980b9; }
+        .loading { color: #e67e22; }
+        .error { color: #e74c3c; }
+    </style>
+</head>
+<body>
+    <h1>Philippine IPTV Player</h1>
+    
+    <!-- Video Player -->
+    <video id="player" controls autoplay muted playsinline></video>
+    
+    <!-- Status Messages -->
+    <div id="status"></div>
+    
+    <!-- Channel Selection -->
+    <div id="channels">
+        <h3>Select Channel:</h3>
+        <button class="channel-btn" data-url="https://webhop.live:443/live/juno123/juno123/19206.ts">
+            Cinema One
+        </button>
+        <button class="channel-btn" data-url="https://webhop.live:443/live/juno123/juno123/19229.ts">
+            GMA News TV
+        </button>
+        <button class="channel-btn" data-url="https://webhop.live:443/live/juno123/juno123/19247.ts">
+            TFC
+        </button>
+        <button class="channel-btn" data-url="https://webhop.live:443/live/juno123/juno123/19253.ts">
+            GMA Pinoy
+        </button>
+    </div>
+    
+    <script>
+        const video = document.getElementById('player');
+        const status = document.getElementById('status');
+        const channelButtons = document.querySelectorAll('.channel-btn');
+        
+        // Function to play a stream
+        function playStream(streamUrl) {
+            status.textContent = 'Loading stream...';
+            status.className = 'loading';
+            
+            console.log('Loading:', streamUrl);
+            
+            // Direct TS playback (works in most browsers)
+            video.src = streamUrl;
+            video.load();
+            
+            // Try to play the video
+            video.play().then(() => {
+                status.textContent = 'Playing';
+                status.className = '';
+                console.log('Stream playing successfully');
+            }).catch(error => {
+                status.textContent = 'Error: Click play button to start';
+                status.className = 'error';
+                console.log('Autoplay blocked. Click play manually.');
+            });
+        }
+        
+        // Add click events to all channel buttons
+        channelButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const streamUrl = this.getAttribute('data-url');
+                playStream(streamUrl);
+            });
+        });
+        
+        // Auto-play the first channel
+        if (channelButtons.length > 0) {
+            channelButtons[0].click();
+        }
+        
+        // Handle video errors
+        video.addEventListener('error', function(e) {
+            console.error('Video error:', video.error);
+            status.textContent = 'Stream error: ' + getVideoError(video.error);
+            status.className = 'error';
+        });
+        
+        function getVideoError(error) {
+            if (!error) return 'Unknown error';
+            switch(error.code) {
+                case 1: return 'Video loading aborted';
+                case 2: return 'Network error';
+                case 3: return 'Video decoding error';
+                case 4: return 'Video not supported';
+                default: return 'Error code: ' + error.code;
+            }
+        }
+    </script>
+</body>
+</html>
