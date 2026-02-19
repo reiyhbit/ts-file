@@ -1,109 +1,125 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Philippine IPTV - Direct Stream Player</title>
-    <script>
-        // Stream redirector service
-        async function playStream(channelId) {
-            const video = document.getElementById('video');
-            const status = document.getElementById('status');
-            
-            // List of available CORS proxies
-            const proxies = [
-                'https://corsproxy.io/?',
-                'https://api.allorigins.win/raw?url=',
-                'https://api.codetabs.com/v1/proxy?quest='
-            ];
-            
-            const streamUrl = `https://webhop.live:443/live/juno123/juno123/${channelId}.ts`;
-            status.textContent = `Trying to play: ${getChannelName(channelId)}`;
-            
-            // Try each proxy until one works
-            for (let proxy of proxies) {
-                try {
-                    const testUrl = proxy + encodeURIComponent(streamUrl);
-                    console.log('Trying proxy:', proxy);
-                    
-                    // Test if stream is accessible
-                    const response = await fetch(testUrl, { method: 'HEAD' });
-                    
-                    if (response.ok) {
-                        console.log('Proxy works:', proxy);
-                        video.src = testUrl;
-                        video.load();
-                        
-                        // Try to play
-                        const playPromise = video.play();
-                        if (playPromise !== undefined) {
-                            playPromise.then(() => {
-                                status.textContent = `Playing: ${getChannelName(channelId)}`;
-                            }).catch(e => {
-                                status.textContent = `Click play button: ${getChannelName(channelId)}`;
-                            });
-                        }
-                        return; // Success
-                    }
-                } catch (error) {
-                    console.log('Proxy failed:', error);
-                    continue; // Try next proxy
-                }
-            }
-            
-            // If no proxy works, show alternative
-            status.innerHTML = `Cannot play directly. Try:<br>
-                1. <a href="${streamUrl}" target="_blank">Open in VLC</a><br>
-                2. Or use the local proxy server method`;
-        }
-        
-        function getChannelName(id) {
-            const channels = {
-                '19206': 'Cinema One',
-                '19229': 'GMA News TV', 
-                '19247': 'TFC',
-                '19253': 'GMA Pinoy'
-            };
-            return channels[id] || `Channel ${id}`;
-        }
-    </script>
-    <style>
-        body { font-family: Arial; padding: 20px; max-width: 1000px; margin: auto; }
-        video { width: 100%; max-height: 500px; background: black; margin: 20px 0; }
-        .channel-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
-        button { padding: 12px; background: #2c3e50; color: white; border: none; cursor: pointer; }
-        button:hover { background: #3498db; }
-        #status { padding: 10px; background: #f8f9fa; margin: 10px 0; }
-    </style>
+  <meta charset="UTF-8">
+  <title>IPTV HLS Player</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #eee;
+      margin: 0;
+      padding: 0;
+    }
+    .header {
+      background: #222;
+      padding: 10px 20px;
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+    #player-container {
+      display: flex;
+      justify-content: center;
+      margin-top: 15px;
+    }
+    #playlist {
+      margin-top: 15px;
+      max-height: 400px;
+      overflow-y: auto;
+      padding: 0 20px;
+    }
+    .channel {
+      padding: 8px;
+      border-bottom: 1px solid #333;
+      cursor: pointer;
+    }
+    .channel:hover {
+      background: #222;
+    }
+  </style>
+
+  <!-- Video.js CSS -->
+  <link href="https://vjs.zencdn.net/7.24.0/video-js.css" rel="stylesheet" />
 </head>
 <body>
-    <h1>🇵🇭 Philippine IPTV Player</h1>
-    <div id="status">Select a channel to begin</div>
-    
-    <video id="video" controls></video>
-    
-    <h3>Popular Channels:</h3>
-    <div class="channel-grid">
-        <button onclick="playStream('19206')">🎬 Cinema One</button>
-        <button onclick="playStream('19229')">📰 GMA News TV</button>
-        <button onclick="playStream('19247')">📺 TFC</button>
-        <button onclick="playStream('19253')">🇵🇭 GMA Pinoy</button>
-        <button onclick="playStream('19255')">🔍 Crime+Investigation</button>
-        <button onclick="playStream('133702')">⚽ beIN Sports 2</button>
-    </div>
-    
-    <div style="margin-top: 30px; padding: 15px; background: #e3f2fd; border-radius: 5px;">
-        <h4>⚠️ If streams don't play:</h4>
-        <ol>
-            <li><strong>Right-click</strong> any channel button → "Copy link address"</li>
-            <li><strong>Open VLC Player</strong> → Media → Open Network Stream</li>
-            <li><strong>Paste the URL</strong> and click Play</li>
-            <li>Works 100% in VLC, browsers have security restrictions</li>
-        </ol>
-        <p>Stream URL example: <code>https://webhop.live:443/live/juno123/juno123/19206.ts</code></p>
-    </div>
-    
-    <script>
-        // Auto-play first channel
-        setTimeout(() => playStream('19206'), 500);
-    </script>
+
+<div class="header">📺 IPTV HLS Player</div>
+
+<!-- Video Player -->
+<div id="player-container">
+  <video
+    id="videoPlayer"
+    class="video-js vjs-default-skin"
+    controls
+    width="800"
+    height="450"
+    preload="auto"
+  ></video>
+</div>
+
+<!-- Playlist -->
+<div id="playlist"></div>
+
+<!-- Video.js + HLS.js + Shaka -->
+<script src="https://vjs.zencdn.net/7.24.0/video.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.4.0/shaka-player.compiled.js"></script>
+
+<script>
+(async () => {
+  const playlistUrl = "https://raw.githubusercontent.com/reiyhbit/iptv/refs/heads/main/viva.m3u";
+  const playlistText = await fetch(playlistUrl).then(r => r.text());
+  
+  // Parse Simple M3U
+  const lines = playlistText.split("\n").filter(l => l.trim() !== "");
+  let channels = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].startsWith("#EXTINF")) {
+      let nameMatch = lines[i].split(",")[1] || "Unknown";
+      let streamUrl = lines[i + 1] || "";
+      channels.push({ name: nameMatch.trim(), url: streamUrl.trim() });
+    }
+  }
+
+  // Populate playlist UI
+  const playlistDiv = document.getElementById("playlist");
+  channels.forEach((ch, idx) => {
+    const div = document.createElement("div");
+    div.className = "channel";
+    div.textContent = ch.name;
+    div.onclick = () => playChannel(ch.url);
+    playlistDiv.appendChild(div);
+  });
+
+  // Setup video.js player
+  const videoEl = document.getElementById("videoPlayer");
+  const player = videojs(videoEl);
+
+  function playChannel(url) {
+    if (Hls.isSupported()) {
+      // HLS.js
+      const hls = new Hls();
+      hls.loadSource(url);
+      hls.attachMedia(videoEl);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        videoEl.play();
+      });
+    } else if (videoEl.canPlayType("application/vnd.apple.mpegurl")) {
+      // Native HLS
+      videoEl.src = url;
+      videoEl.play();
+    } else {
+      // Shaka fallback
+      shaka.polyfill.installAll();
+      const shakaPlayer = new shaka.Player(videoEl);
+      shakaPlayer.load(url).catch(err => {
+        console.error("Shaka playback failed:", err);
+      });
+    }
+  }
+})();
+</script>
+
 </body>
 </html>
